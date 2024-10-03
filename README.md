@@ -1,94 +1,123 @@
-# De Bruijn Graph Construction from FASTA File
+# Co-occurrence Network Construction from Multiple BIOM Files
 
-This repository contains a Python script that reads sequences from a gzipped FASTA file and constructs a De Bruijn graph. De Bruijn graphs are commonly used in bioinformatics for genome assembly and sequence analysis. The script also includes functionality to visualize a subgraph of the De Bruijn graph to aid in understanding the structure of the data.
+This repository contains a Python script that reads OTU (Operational Taxonomic Unit) tables from multiple BIOM files and constructs co-occurrence networks using both Pearson and Spearman correlations. The script is designed to handle multiple samples and generates networks based on the abundance patterns of OTUs across these samples. Visualization functionality is included to help understand the structure of the networks.
 
 ## Table of Contents
 
-- [De Bruijn Graph Construction from FASTA File](#de-bruijn-graph-construction-from-fasta-file)
-  - [Table of Contents](#table-of-contents)
-  - [Prerequisites](#prerequisites)
-  - [Usage](#usage)
-  - [Script Overview](#script-overview)
-  - [Functions](#functions)
-  - [Visualization](#visualization)
-  - [Saving and Loading the Graph](#saving-and-loading-the-graph)
-  - [Notes](#notes)
-  - [License](#license)
+- [Prerequisites](#prerequisites)
+- [Usage](#usage)
+- [Functions](#functions)
+- [Visualization](#visualization)
+- [Saving and Loading the Network](#saving-and-loading-the-network)
+- [License](#license)
 
 ## Prerequisites
 
-- **Python 3.6** or higher
-- **Required Python Packages:**
-  - `networkx` (version 3.0 or higher)
+- Python 3.6 or higher
+- Required Python Packages:
+  - `networkx`
+  - `pandas`
+  - `numpy`
   - `matplotlib`
+  - `biom-format`
 
-You can install the required packages using `pip`:
+You can install the required packages using pip:
 
 ```bash
-pip install networkx matplotlib
+pip install networkx pandas numpy matplotlib biom-format
 ```
 
 ## Usage
-To run the script, use the following command:
 
+- Prepare Your BIOM Files:
+   1. Collect all your BIOM files (one per sample) and place them in a directory.
+   2. Ensure that the OTU IDs are consistent across all files.
+- Run the Script:
 ```bash
-python fasta.py <input_fasta_file>
+python cooccurrence_network.py sample1.biom sample2.biom sample3.biom --method both --threshold 0.6 --num_nodes 100
 ```
+- Parameters:
+  - `sample1.biom` `sample2.biom` `sample3.biom`: Paths to your BIOM files. You can list as many as needed.
+  - `--method`: Correlation method to use. Options are `'pearson'`, `'spearman'`, or `'both'`. Default is `'both'`.
+  - `--threshold`: Correlation threshold for including edges in the network. Edges with absolute correlation values above this threshold will be included.
+  - `--num_nodes`: Number of nodes to visualize (optional). Helps manage visualization of large networks.
 
-Replace <input_fasta_file> with the path to your gzipped FASTA file.
 
-## Script Overview
-The script performs the following steps:
-
-1. Reads sequences from a gzipped FASTA file.
-2. Constructs a De Bruijn graph from the sequences.
-3. Provides functionality to visualize a subgraph of the De Bruijn graph.
+- Script Output:
+  - The script will load the BIOM files, combine them into a single DataFrame, and compute the correlation matrices.
+  - It will build co-occurrence networks based on the specified correlation method(s).
+  - The script will print the number of OTUs, samples, nodes, and edges.
+  - Visualization windows will display the co-occurrence networks.
 
 ## Functions
+### `load_biom_tables(biom_files)`
 
-`read_fasta(file_path)
-`
+Loads OTU tables from multiple BIOM files and combines them into a single DataFrame.
+- Parameters:
+  - `biom_files` (list of str): Paths to the BIOM files.
+- Returns:
+  - `pandas.DataFrame`: Combined DataFrame with OTUs as rows and samples as columns.
 
-Reads sequences from a gzipped FASTA file.
+### `compute_correlations(df, method='pearson')`
 
-`construct_de_bruijn_graph(sequences, k)
-`
+Computes pairwise correlations between OTUs.
+- Parameters:
+  -  `df (pandas.DataFrame)`: DataFrame with OTUs as rows and samples as columns.
+  -  `method` (str): Correlation method ('pearson' or 'spearman').
+-  Returns:
+   -  `pandas.DataFrame`: Correlation matrix.
 
-Constructs a De Bruijn graph from the given sequences with k-mers of length k.
+### `build_cooccurrence_network(correlation_matrix, threshold)`
 
-`visualize_subgraph(graph, node, radius)
-`
+Builds a co-occurrence network based on the correlation matrix.
+- Parameters:
+  - `correlation_matrix (pandas.DataFrame)`: Correlation matrix.
+  - `threshold` (float): Threshold for including an edge in the network.
+- Returns:
+  - `networkx.Graph`: Co-occurrence network.
 
-Visualizes a subgraph of the De Bruijn graph centered around a given node within a specified radius.
+### `visualize_network(G, title, num_nodes=None)`
+
+Visualizes the co-occurrence network.
+- Parameters:
+  - `G (networkx.Graph)`: Co-occurrence network.
+  - `title` (str): Title for the plot.
+  - `num_nodes` (int): Number of nodes to visualize (optional).
 
 ## Visualization
-To visualize a subgraph of the De Bruijn graph, use the visualize_subgraph function. This function requires matplotlib to display the graph.
 
-Example:
-
-```python
-import networkx as nx
-import matplotlib.pyplot as plt
-from fasta import read_fasta, construct_de_bruijn_graph, visualize_subgraph
-
-sequences = read_fasta('example.fasta.gz')
-graph = construct_de_bruijn_graph(sequences, k=21)
-visualize_subgraph(graph, node='ATG', radius=2)
-plt.show()
+Due to the potentially large size of the networks, the `visualize_network()` function allows you to limit the number of nodes displayed.
+- Adjusting the Number of Nodes:
+```bash
+--num_nodes 200  # Visualizes 200 nodes
 ```
-
-## Saving and Loading the Graph
-You can save the constructed De Bruijn graph to a file and load it later using networkx functions.
-
-Example:
+- Edge Coloring:
+  - Edges are colored based on their correlation values.
+  - Positive and negative correlations can be visually distinguished if desired.
+- Saving the Visualization:
+  - If you prefer to save the visualization to a file instead of displaying it, you can modify the `visualize_network()` function:
 ```python
-nx.write_gpickle(graph, 'de_bruijn_graph.gpickle')
-loaded_graph = nx.read_gpickle('de_bruijn_graph.gpickle')
+    plt.savefig('cooccurrence_network.png', dpi=300)
 ```
+## Saving and Loading the Network
 
-## Notes
-Ensure that the input FASTA file is gzipped.
-The script assumes that the sequences are DNA sequences.
+You can save the constructed networks for later analysis.
+- Saving the Network:
+```python
+nx.write_gpickle(G, f'cooccurrence_network_{method}.gpickle')
+```
+- Loading the Network:
+```python
+    import networkx as nx
 
+    G = nx.read_gpickle('cooccurrence_network_pearson.gpickle')
+```
 ## License
-This project is licensed under the MIT License.
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+---
+
+Contact Information:
+
+For questions or support, please contact brandon@chitownbio.org.
