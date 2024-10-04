@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from biom import load_table
+from datetime import datetime
 
 def load_biom_tables(biom_files):
     """
@@ -30,6 +31,7 @@ def compute_correlations(df, method='pearson'):
 
     Parameters:
     df (pandas.DataFrame): DataFrame with OTUs as rows and samples as columns.
+    method (str): Correlation method ('pearson' or 'spearman').
 
     Returns:
     pandas.DataFrame: Correlation matrix.
@@ -37,6 +39,12 @@ def compute_correlations(df, method='pearson'):
     if method not in ['pearson', 'spearman']:
         raise ValueError("method should be 'pearson' or 'spearman'")
     correlation_matrix = df.T.corr(method=method)
+    
+    # Generate timestamp and save to CSV
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = f"correlation_matrix_{method}_{timestamp}.csv"
+    correlation_matrix.to_csv(output_file)
+    
     return correlation_matrix
 
 def build_cooccurrence_network(correlation_matrix, threshold):
